@@ -4,7 +4,9 @@ MCP server for querying [WormBase](https://wormbase.org) - the *C. elegans* and 
 
 ## Installation
 
-Add to your Claude Code settings (`~/.claude/settings.json`):
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
@@ -17,12 +19,80 @@ Add to your Claude Code settings (`~/.claude/settings.json`):
 }
 ```
 
-Then just ask questions:
+### Claude Code (CLI)
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "wormbase": {
+      "command": "npx",
+      "args": ["-y", "@wormbase/mcp-server"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to Cursor settings (Settings > MCP Servers):
+
+```json
+{
+  "wormbase": {
+    "command": "npx",
+    "args": ["-y", "@wormbase/mcp-server"]
+  }
+}
+```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "wormbase": {
+      "command": "npx",
+      "args": ["-y", "@wormbase/mcp-server"]
+    }
+  }
+}
+```
+
+### From source
+
+```bash
+git clone https://github.com/WormBase/wormbase-mcp.git
+cd wormbase-mcp
+npm install && npm run build
+```
+
+Then use the local path in your config:
+
+```json
+{
+  "mcpServers": {
+    "wormbase": {
+      "command": "node",
+      "args": ["/path/to/wormbase-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+## Usage
+
+Just ask questions naturally:
 
 - "What does daf-2 do?"
 - "Search for genes involved in longevity"
 - "Get phenotypes for unc-13"
 - "Find interactions for lin-14"
+- "What are the homologs of aap-1?"
+- "Give me the sequence of protein CE29083"
 
 ## Tools
 
@@ -44,16 +114,6 @@ Then just ask questions:
 
 - **Search & name resolution**: [WormMine](https://wormmine.alliancegenome.org/wormmine)
 - **Detailed data**: [WormBase REST API](http://rest.wormbase.org)
-
-## Development
-
-```bash
-git clone https://github.com/WormBase/wormbase-mcp.git
-cd wormbase-mcp
-npm install
-npm run build
-npm run dev
-```
 
 ## License
 
