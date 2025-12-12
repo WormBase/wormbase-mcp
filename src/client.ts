@@ -1,6 +1,6 @@
 import { EntityType, SearchResponse, EntityData, InteractionData } from "./types.js";
 
-const BASE_URL = "https://rest.wormbase.org";
+const BASE_URL = "http://rest.wormbase.org";
 const SEARCH_URL = "https://wormbase.org/search";
 
 export class WormBaseClient {
