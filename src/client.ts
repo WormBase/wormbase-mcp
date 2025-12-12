@@ -1,15 +1,15 @@
 import { EntityType, SearchResponse, EntityData, InteractionData } from "./types.js";
 
 const BASE_URL = "http://rest.wormbase.org";
-const SEARCH_URL = "https://wormbase.org/search";
+const WORMMINE_URL = "https://wormmine.alliancegenome.org/wormmine/service";
 
 export class WormBaseClient {
   private baseUrl: string;
-  private searchUrl: string;
+  private wormmineUrl: string;
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || BASE_URL;
-    this.searchUrl = SEARCH_URL;
+    this.wormmineUrl = WORMMINE_URL;
   }
 
   private async fetch<T>(url: string): Promise<T> {
@@ -32,67 +32,43 @@ export class WormBaseClient {
   }
 
   /**
-   * Search WormBase for entities
+   * Search WormBase using WormMine
    */
   async search(
     query: string,
     type?: EntityType,
     limit: number = 10
   ): Promise<SearchResponse> {
-    // Try direct ID lookup first if query looks like an ID
-    if (this.looksLikeId(query)) {
-      const directResult = await this.tryDirectLookup(query, type);
-      if (directResult) {
-        return {
-          query,
-          results: [directResult],
-          total: 1,
-        };
-      }
-    }
-
-    // Use WormBase autocomplete/search API
-    const searchType = type || "all";
-    const url = `${this.searchUrl}/${searchType}/${encodeURIComponent(query)}?content-type=application/json`;
+    const url = `${this.wormmineUrl}/search?q=${encodeURIComponent(query)}&size=${limit}`;
 
     try {
       const response = await this.fetch<any>(url);
-
-      // Parse search results
-      const results = this.parseSearchResults(response, limit);
+      const results = this.parseWormMineResults(response, type, limit);
       return {
         query,
         results,
-        total: results.length,
+        total: response.totalHits || results.length,
       };
     } catch (error) {
-      // If search fails, try direct lookup on common entity types
-      const types: EntityType[] = type
-        ? [type]
-        : ["gene", "protein", "variation", "strain", "phenotype"];
-
-      for (const t of types) {
-        try {
-          const data = await this.getEntity(t, query, ["overview"]);
-          if (data && data.overview) {
-            return {
-              query,
-              results: [{
-                id: query,
-                label: this.extractLabel(data.overview) || query,
-                class: t,
-                description: this.extractDescription(data.overview),
-              }],
-              total: 1,
-            };
-          }
-        } catch {
-          continue;
-        }
-      }
-
       return { query, results: [], total: 0 };
     }
+  }
+
+  /**
+   * Resolve gene name to WBGene ID using WormMine
+   */
+  async resolveGeneId(name: string): Promise<string | null> {
+    const url = `${this.wormmineUrl}/search?q=${encodeURIComponent(name)}&facet_Category=Gene&size=1`;
+
+    try {
+      const response = await this.fetch<any>(url);
+      if (response.results?.[0]?.fields?.primaryIdentifier) {
+        return response.results[0].fields.primaryIdentifier;
+      }
+    } catch {
+      // Fall through
+    }
+    return null;
   }
 
   /**
@@ -102,14 +78,23 @@ export class WormBaseClient {
     id: string,
     widgets?: string[]
   ): Promise<Record<string, unknown>> {
+    // Resolve gene name to WBGene ID if needed
+    let geneId = id;
+    if (!id.startsWith("WBGene")) {
+      const resolved = await this.resolveGeneId(id);
+      if (resolved) {
+        geneId = resolved;
+      }
+    }
+
     const defaultWidgets = ["overview", "phenotype", "expression", "ontology"];
     const requestedWidgets = widgets || defaultWidgets;
 
-    const result: Record<string, unknown> = { id };
+    const result: Record<string, unknown> = { id: geneId, query: id };
 
     for (const widget of requestedWidgets) {
       try {
-        const url = `${this.baseUrl}/rest/widget/gene/${encodeURIComponent(id)}/${widget}`;
+        const url = `${this.baseUrl}/rest/widget/gene/${encodeURIComponent(geneId)}/${widget}`;
         const data = await this.fetch<any>(url);
         result[widget] = this.cleanWidgetData(data);
       } catch (error) {
@@ -211,77 +196,41 @@ export class WormBaseClient {
 
   // Helper methods
 
-  private looksLikeId(query: string): boolean {
-    // WormBase IDs typically start with WB and have specific patterns
-    const idPatterns = [
-      /^WB[A-Z][a-z]+\d+$/,  // WBGene00006763, WBVar00143949
-      /^WBPhenotype:\d+$/,   // WBPhenotype:0000643
-      /^DOID:\d+$/,          // Disease ontology IDs
-      /^GO:\d+$/,            // Gene ontology IDs
-      /^[A-Z]+\d+$/,         // Simple alphanumeric IDs
-    ];
-
-    return idPatterns.some(pattern => pattern.test(query));
-  }
-
-  private async tryDirectLookup(
-    id: string,
-    type?: EntityType
-  ): Promise<{ id: string; label: string; class: string; description?: string } | null> {
-    // Infer type from ID pattern if not provided
-    const inferredType = type || this.inferTypeFromId(id);
-    if (!inferredType) return null;
-
-    try {
-      const data = await this.getEntity(inferredType, id, ["overview"]);
-      if (data && data.overview) {
-        return {
-          id,
-          label: this.extractLabel(data.overview) || id,
-          class: inferredType,
-          description: this.extractDescription(data.overview),
-        };
-      }
-    } catch {
-      return null;
-    }
-
-    return null;
-  }
-
-  private inferTypeFromId(id: string): EntityType | null {
-    if (id.startsWith("WBGene")) return "gene";
-    if (id.startsWith("WBProtein") || id.startsWith("CE")) return "protein";
-    if (id.startsWith("WBVar")) return "variation";
-    if (id.startsWith("WBStrain")) return "strain";
-    if (id.startsWith("WBPhenotype")) return "phenotype";
-    if (id.startsWith("WBTransgene")) return "transgene";
-    if (id.startsWith("WBRNAi")) return "rnai";
-    if (id.startsWith("WBPaper")) return "paper";
-    if (id.startsWith("WBPerson")) return "person";
-    if (id.startsWith("DOID:")) return "disease";
-    if (id.startsWith("GO:")) return "go_term";
-    return null;
-  }
-
-  private parseSearchResults(response: any, limit: number): Array<{
+  private parseWormMineResults(
+    response: any,
+    type: EntityType | undefined,
+    limit: number
+  ): Array<{
     id: string;
     label: string;
     class: string;
     taxonomy?: string;
     description?: string;
   }> {
-    if (!response) return [];
+    if (!response?.results) return [];
 
-    // Handle different response formats
-    const hits = response.hits || response.results || response.matches || [];
+    let results = response.results;
 
-    return hits.slice(0, limit).map((hit: any) => ({
-      id: hit.id || hit.name?.id || hit.wbid || "",
-      label: hit.label || hit.name?.label || hit.name || "",
-      class: hit.class || hit.type || hit.category || "",
-      taxonomy: hit.taxonomy || hit.species || "",
-      description: hit.description || hit.summary || "",
+    // Filter by type if specified
+    if (type) {
+      const typeMap: Record<string, string> = {
+        gene: "Gene",
+        protein: "Protein",
+        strain: "Strain",
+        variation: "Allele",
+        rnai: "RNAi",
+        phenotype: "Phenotype",
+      };
+      const mappedType = typeMap[type] || type;
+      results = results.filter((r: any) => r.type === mappedType);
+    }
+
+    return results.slice(0, limit).map((hit: any) => ({
+      id: hit.fields?.primaryIdentifier || hit.fields?.secondaryIdentifier || String(hit.id),
+      label: hit.fields?.symbol || hit.fields?.name || hit.fields?.primaryIdentifier || "",
+      class: hit.type?.toLowerCase() || "",
+      taxonomy: hit.fields?.["organism.name"] || "",
+      description: hit.fields?.briefDescription || "",
     }));
   }
 
