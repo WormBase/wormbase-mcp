@@ -1,0 +1,50 @@
+{
+  "name": "@wormbase/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for WormBase REST API - access C. elegans and nematode biological data with natural language",
+  "main": "dist/index.js",
+  "bin": {
+    "wormbase-mcp": "./dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "wormbase",
+    "c-elegans",
+    "nematode",
+    "biology",
+    "bioinformatics",
+    "genomics",
+    "model-context-protocol",
+    "llm",
+    "claude"
+  ],
+  "author": "WormBase",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WormBase/wormbase-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
