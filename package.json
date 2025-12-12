@@ -1,5 +1,5 @@
 {
-  "name": "@wormbase/mcp-server",
+  "name": "@nuin/wormbase-mcp",
   "version": "0.1.0",
   "description": "MCP server for WormBase REST API - access C. elegans and nematode biological data with natural language",
   "main": "dist/index.js",

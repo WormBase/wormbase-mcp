@@ -13,7 +13,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "wormbase": {
       "command": "npx",
-      "args": ["-y", "@wormbase/mcp-server"]
+      "args": ["-y", "@nuin/wormbase-mcp"]
     }
   }
 }
@@ -28,7 +28,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "wormbase": {
       "command": "npx",
-      "args": ["-y", "@wormbase/mcp-server"]
+      "args": ["-y", "@nuin/wormbase-mcp"]
     }
   }
 }
@@ -42,7 +42,7 @@ Add to Cursor settings (Settings > MCP Servers):
 {
   "wormbase": {
     "command": "npx",
-    "args": ["-y", "@wormbase/mcp-server"]
+    "args": ["-y", "@nuin/wormbase-mcp"]
   }
 }
 ```
@@ -56,7 +56,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "wormbase": {
       "command": "npx",
-      "args": ["-y", "@wormbase/mcp-server"]
+      "args": ["-y", "@nuin/wormbase-mcp"]
     }
   }
 }
